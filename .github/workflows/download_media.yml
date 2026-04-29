@@ -1,0 +1,103 @@
+name: Download Media from URLs (with crawl & RAR split)
+
+on:
+  workflow_dispatch:
+    inputs:
+      urls:
+        description: 'Comma-separated seed URLs'
+        required: true
+        type: string
+        default: 'https://example.com'
+      depth:
+        description: 'Crawl depth (0 = only seed page)'
+        required: false
+        type: number
+        default: 0
+      url_pattern:
+        description: 'Regex to filter links (optional)'
+        required: false
+        type: string
+        default: ''
+      same_domain:
+        description: 'Stay on same domain?'
+        required: false
+        type: boolean
+        default: true
+      max_pages:
+        description: 'Max pages per seed (0 = unlimited)'
+        required: false
+        type: number
+        default: 0
+      max_media_files:
+        description: 'Max media files per seed (0 = unlimited)'
+        required: false
+        type: number
+        default: 0
+      max_download_mb:
+        description: 'Max download size in MB per seed (0 = unlimited)'
+        required: false
+        type: number
+        default: 0
+
+jobs:
+  scrape-and-commit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: ${{ runner.os }}-pip-
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: ${{ runner.os }}-playwright-
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright requests tqdm
+
+      - name: Install Chromium & system deps
+        run: |
+          python -m playwright install chromium
+          npx playwright install-deps chromium
+
+      - name: Install RAR command-line tool
+        run: sudo apt-get update && sudo apt-get install -y rar
+
+      - name: Scrape & create RAR volumes
+        env:
+          TARGET_URLS: ${{ github.event.inputs.urls }}
+          CRAWL_DEPTH: ${{ github.event.inputs.depth }}
+          URL_PATTERN: ${{ github.event.inputs.url_pattern }}
+          SAME_DOMAIN: ${{ github.event.inputs.same_domain }}
+          MAX_PAGES: ${{ github.event.inputs.max_pages }}
+          MAX_MEDIA_FILES: ${{ github.event.inputs.max_media_files }}
+          MAX_DOWNLOAD_MB: ${{ github.event.inputs.max_download_mb }}
+        run: python download_media.py
+
+      - name: Push RAR archives to dl branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -B dl
+          git add -f *.rar
+          git commit -m "Crawl $TARGET_URLS depth=$CRAWL_DEPTH" || echo "Nothing to commit"
+          git push origin dl --force
