@@ -1,23 +1,20 @@
-name: Run Hiddify Install Script
+name: Run Hiddify Manager Install
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:          # manual trigger
 
 jobs:
-  run-script:
+  install:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout Hiddify-Manager repository
         uses: actions/checkout@v4
+        with:
+          repository: hiddify/Hiddify-Manager
+          path: hiddify-manager     # clones into ./hiddify-manager
 
-      # Make /tmp/hiddify point to a location that allows execution
-      - name: Prepare writable temp directory
+      - name: Run install script
+        working-directory: hiddify-manager
         run: |
-          sudo rm -rf /tmp/hiddify
-          mkdir -p "$RUNNER_TEMP/hiddify"
-          sudo ln -sf "$RUNNER_TEMP/hiddify" /tmp/hiddify
-
-      - name: Execute Hiddify release script
-        env:
-          TMPDIR: ${{ runner.temp }}
-        run: bash <(curl -sSL https://i.hiddify.com/release)
+          chmod +x install.sh
+          sudo ./install.sh
