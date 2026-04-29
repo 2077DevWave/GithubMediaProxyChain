@@ -1,0 +1,45 @@
+name: Create Offline Website ZIP and Push to Branch
+
+on:
+  schedule:
+    - cron: '0 2 * * *'          # Daily at 02:00 UTC
+  workflow_dispatch:              # Manual trigger
+    inputs:
+      url:
+        description: 'Target URL'
+        required: true
+        default: 'https://cnn.com'
+
+permissions:
+  contents: write                  # Needed to push the ZIP to a branch
+
+jobs:
+  build-offline-site:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0           # Full history for branch operations
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run offline crawler & push ZIP
+        env:
+          TARGET_URL: ${{ github.event.inputs.url || 'https://example.com' }}
+          OUTPUT_DIR: './offline_site'
+          ZIP_FILENAME: 'offline_site.zip'
+          BRANCH_NAME: 'offline-zip'
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python offline_crawler.py
