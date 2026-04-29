@@ -17,4 +17,4 @@ jobs:
         working-directory: hiddify-manager
         run: |
           # chmod +x install.sh
-          ./install.sh
+          sudo ./install.sh
