@@ -1,16 +1,21 @@
 name: Run Hiddify Install Script
 
 on:
-  workflow_dispatch:        # allows manual triggering from the Actions tab
-  push:
-    branches: [ main ]      # runs automatically on push to main
+  workflow_dispatch:
 
 jobs:
   run-script:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4   # optional, but often useful
+        uses: actions/checkout@v4
+
+      # Make /tmp/hiddify point to a location that allows execution
+      - name: Prepare writable temp directory
+        run: |
+          sudo rm -rf /tmp/hiddify
+          mkdir -p "$RUNNER_TEMP/hiddify"
+          sudo ln -sf "$RUNNER_TEMP/hiddify" /tmp/hiddify
 
       - name: Execute Hiddify release script
         run: bash <(curl -sSL https://i.hiddify.com/release)
