@@ -18,4 +18,6 @@ jobs:
           sudo ln -sf "$RUNNER_TEMP/hiddify" /tmp/hiddify
 
       - name: Execute Hiddify release script
+        env:
+          TMPDIR: ${{ runner.temp }}
         run: bash <(curl -sSL https://i.hiddify.com/release)
